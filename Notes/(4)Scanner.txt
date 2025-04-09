@@ -1,0 +1,6 @@
+Where we start building the Scanner
+
+4.2 
+We want to blob the lines into tokens so that they contain informations still
+(Lexeme).
+

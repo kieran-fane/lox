@@ -1,0 +1,6 @@
+Lox Lang and what it is and stuff idk
+
+Dynamially typed and pretty straight forward. 
+
+3.8.1
+All functions are first-class (closures).

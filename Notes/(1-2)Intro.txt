@@ -1,0 +1,14 @@
+Chapter 1-2
+
+2.2.2
+We will be writing a language that is a Tree-Walk Interpreter first.
+
+2.2.3 (interesting side point)
+Possibly can transpile code to WebAssembly to write compilers that target it.
+IE new languages to write for web.
+
+General takes
+
+- Getting a lay of the land and overview
+- Dictionary of jargon with how parts will fit good to reference back.
+4/9/2025
