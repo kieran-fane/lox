@@ -205,6 +205,16 @@ class Parser {
             QUESTION, COLON, COMMA)) {
       Token operator = previous();
       error(operator, "Expect left-hand operand.");
+      /**
+       * "Why not throw or synchronize on this error?"
+       *
+       * Discovery Note: We don't need to throw the error since
+       * we know where we are at while parsing and can safely 
+       * continue. Also don't need to synchronize here, since we 
+       * are handling binary operators, we know exactly where we 
+       * are at in the grammar. (ie synchronize is for larger
+       * issues) 
+       */
 
       // Parse and discard the right-hand operand to synchronize
       // Parse it with the correct precedence:
@@ -238,7 +248,6 @@ class Parser {
           // If it's something else unexpected, just advance.
           advance();
     }
-
     // Return a dummy literal to satisfy parser type
     return new Expr.Literal(null);
   }
