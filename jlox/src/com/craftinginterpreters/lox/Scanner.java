@@ -80,8 +80,20 @@ class Scanner {
       case '>' -> addToken(match('=') ? GREATER_EQUAL : GREATER);
       case '/' -> {
           if (match('/')) {
-              // a comment goes until the end of the line. Ignore the line.
-              while (peek() != '\n' && !isAtEnd()) advance();
+            // a comment goes until the end of the line. Ignore the line.
+            while (peek() != '\n' && !isAtEnd()) advance();
+          } else if (match('*')) {
+            // a C-style comment block (Kieran's Addition)
+            while (!(peek() == '*' && peekNext() == '/') && !isAtEnd()) {
+              if (peek() == '\n') line++; // count new lines
+              advance();
+            }
+            if (!isAtEnd()) {
+              advance(); // consume '*'
+              advance(); // consume '/'
+            } else {
+              Lox.error(line, "Unterminated block comment.");
+            }
           } else {
               addToken(SLASH);
           }
