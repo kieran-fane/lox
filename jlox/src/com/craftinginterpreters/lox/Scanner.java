@@ -94,6 +94,31 @@ class Scanner {
             } else {
               Lox.error(line, "Unterminated block comment.");
             }
+            // OPTION - this is how you can allow for nested block-comments
+            // i personally hate this, nested comments shouldn't be allowed.
+            // Just write it as one block instead!
+            /*
+            // C-style comment block with nesting
+            int depth = 1; // one block opened
+            while (depth > 0 && !isAtEnd()) {
+              if (peek() == '\n') line++; // count newlines
+            
+              if (peek() == '/' && peekNext() == '*') {
+                advance(); // consume '/'
+                advance(); // consume '*'
+                depth++; // nested comment starts
+              } else if (peek() == '*' && peekNext() == '/') {
+                advance(); // consume '*'
+                advance(); // consume '/'
+                depth--; // comment ends
+              } else {
+                advance(); // regular character
+              }
+            }
+            if (depth > 0 && isAtEnd()) {
+              error(line, "Unterminated block comment.");
+            }
+            */
           } else {
               addToken(SLASH);
           }
@@ -145,7 +170,7 @@ class Scanner {
 
     addToken(NUMBER,
         Double.parseDouble(source.substring(start, current))); //Lazy conversion with Java funct
-        // TODO - make my own parser to create this literal.
+        // TODO - make my own parser to create this literal (good practice).
   }
 
   /**
