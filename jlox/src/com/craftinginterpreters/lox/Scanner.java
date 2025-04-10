@@ -78,6 +78,8 @@ class Scanner {
       case '=' -> addToken(match('=') ? EQUAL_EQUAL : EQUAL);
       case '<' -> addToken(match('=') ? LESS_EQUAL : LESS);
       case '>' -> addToken(match('=') ? GREATER_EQUAL : GREATER);
+      case '?' -> addToken(QUESTION);
+      case ':' -> addToken(COLON);
       case '/' -> {
           if (match('/')) {
             // a comment goes until the end of the line. Ignore the line.

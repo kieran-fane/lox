@@ -59,13 +59,16 @@ public class Lox {
     Scanner scanner = new Scanner(source);
     List<Token> tokens = scanner.scanTokens();
 
-    // For now, just print the tokens.
-    for (Token token : tokens) {
-      System.out.println(token);
-    }
-  }
+    Parser parser = new Parser(tokens);
+    Expr expression = parser.parse();
 
-  /**
+    // Stop if there was a syntax error.
+    if (hadError) return;
+
+    System.out.println(new AstPrinter().print(expression));
+  }
+  
+   /**
    * Bare minimum for handling syntax errors
    * @param line the line# that was bad
    * @param message the message of the error.
@@ -73,13 +76,6 @@ public class Lox {
   static void error(int line, String message) {
     report(line, "", message);
   }
-
-  /** "Why is this here?"
-   * Per the craftinginterpreters.com
-   * "...it’s good engineering practice to separate
-   * the code that generates the errors from the code 
-   * that reports them."
-   */
 
   /**
    * Prints the error for the user to see
@@ -94,6 +90,26 @@ public class Lox {
     System.err.println(
         "[line " + line + "] Error" + where + ": " + message);
     hadError = true;
+  }
+
+  /** "Why is this here?"
+   * Per the craftinginterpreters.com
+   * "...it’s good engineering practice to separate
+   * the code that generates the errors from the code 
+   * that reports them."
+   */
+
+  /**
+   * Bare minimum for handling syntax errors
+   * @param line the line# that was bad
+   * @param message the message of the error.
+   */
+  static void error(Token token, String message) {
+    if (token.type == TokenType.EOF) {
+      report(token.line, " at end", message);
+    } else {
+      report(token.line, " at '" + token.lexeme + "'", message);
+    }
   }
 
 }
