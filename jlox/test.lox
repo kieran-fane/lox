@@ -1,0 +1,32 @@
+var a = "global a";
+var b = "global b";
+var c = "global c";
+var what = "WHAT THE FUCK WHY DID THIS BREAK?!";
+{
+  var a = "outer a";
+  var b = "outer b";
+  {
+    var a = "inner a";
+    print a;
+    print b;
+    print c;
+  }
+  print a;
+  print b;
+  print c;
+}
+print a;
+print b;
+print c;
+
+print (1+1) == 2 ? "done" : what;
+
+var x = 10;
+x = x == 10 ? "perfect" : "broken";
+print x; // "perfect"
+
+var a = 1;
+{
+  var a = a + 2;
+  print a;
+}
