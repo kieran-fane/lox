@@ -6,6 +6,8 @@ class Interpreter implements Expr.Visitor<Object>,
                              Stmt.Visitor<Void> {
   private Environment environment = new Environment();
 
+  private static class BreakException extends RuntimeException {}
+
   /**
    * The basis of a program, accept a list of statements
    * (and execute them or error)
@@ -29,6 +31,24 @@ class Interpreter implements Expr.Visitor<Object>,
   @Override
   public Object visitLiteralExpr(Expr.Literal expr) {
     return expr.value; //Extract value
+  }
+
+  /**
+   * Evaluates a logical operator.
+   * @param expr
+   * @return value
+   */
+  @Override
+  public Object visitLogicalExpr(Expr.Logical expr) {
+    Object left = evaluate(expr.left);
+
+    if (expr.operator.type == TokenType.OR) {
+      if (isTruthy(left)) return left;
+    } else {
+      if (!isTruthy(left)) return left;
+    }
+
+    return evaluate(expr.right);
   }
 
   /**
@@ -123,6 +143,22 @@ class Interpreter implements Expr.Visitor<Object>,
   }
 
   /**
+   * Goes to If Statement and evaluates the condition and the else.
+   * @param stmt if statement
+   * @return null
+   */
+  @Override
+  public Void visitIfStmt(Stmt.If stmt) {
+    if (isTruthy(evaluate(stmt.condition))) {
+      execute(stmt.thenBranch);
+    } else if (stmt.elseBranch != null) {
+      execute(stmt.elseBranch);
+    }
+    return null;
+  }
+
+
+  /**
    * Goes to Print Statement and evaluates the expression and prints it to out
    * @param stmt Print statement 
    * @return null (statements don't have a return)
@@ -149,6 +185,32 @@ class Interpreter implements Expr.Visitor<Object>,
 
     environment.define(stmt.name.lexeme, value);
     return null;
+  }
+
+  /**
+   * Goes to While Statement and evaluates it.
+   * @param stmt
+   * @return null
+   */
+  @Override
+  public Void visitWhileStmt(Stmt.While stmt) {
+    while (isTruthy(evaluate(stmt.condition))) {
+      try {
+        execute(stmt.body);
+      } catch (BreakException e) {
+        break;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Goes to Break Statement and evaluates it
+   * (throws error for whileStmt to catch and handle)
+   */
+  @Override
+  public Void visitBreakStmt(Stmt.Break stmt) {
+    throw new BreakException();
   }
 
   /**

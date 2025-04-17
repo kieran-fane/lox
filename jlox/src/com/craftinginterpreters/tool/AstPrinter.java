@@ -1,4 +1,13 @@
-package com.craftinginterpreters.lox;
+package com.craftinginterpreters.tool;
+
+import com.craftinginterpreters.lox.Expr;
+import com.craftinginterpreters.lox.Expr.Binary;
+import com.craftinginterpreters.lox.Expr.Comma;
+import com.craftinginterpreters.lox.Expr.Conditional;
+import com.craftinginterpreters.lox.Expr.Grouping;
+import com.craftinginterpreters.lox.Expr.Literal;
+import com.craftinginterpreters.lox.Expr.Unary;
+import com.craftinginterpreters.lox.Expr.Visitor;
 
 /**
  * Pretty Printer for AST.

@@ -2,18 +2,11 @@ package com.craftinginterpreters.lox;
 
 import static com.craftinginterpreters.lox.TokenType.*;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /**
  * Recursive Decent for the Grammar of the Language.
- * 
- * ----------------
- * Equality       |    TOP        Lower
- * Comparison     |     |           |
- * Addition       |  Grammar    Precedence
- * Multiplication |     |           |
- * Unary          |  Bottom       Higher
- * ----------------
  * 
  * program        → declaration* EOF ;
  *
@@ -22,16 +15,32 @@ import java.util.List;
  * varDecl        → "var" IDENTIFIER ( "=" expression )? ";" ;
  * 
  * statement      → exprStmt
+ *                  | ifStmt
  *                  | printStmt
+ *                  | whileStmt
  *                  | block ;
-
+ * 
+ * forStmt        → "for" "(" ( varDecl | exprStmt | ";" )
+ *                expression? ";"
+ *                expression? ")" statement ;
+ * 
+ * whileStmt      → "while" "(" expression ")" statement ;
+ * 
+ * ifStmt         → "if" "(" expression ")" statement
+ *                  ( "else" statement )? ;
  * block          → "{" declaration* "}" ;
  * exprStmt       → expression ";" ;
  * printStmt      → "print" expression ";" ;
  * 
- * expression → comma
- * comma → assignment ( "," assignment )*
- * assignment → IDENTIFIER "=" assignment | conditional
+ * expression     → comma;
+ * comma          → assignment ( "," assignment )*;
+ * assignment     → IDENTIFIER "=" assignment 
+ *                  | conditional
+ *                  | logic_or;
+ * 
+ * logic_or       → logic_and ( "or" logic_and )* ;
+ * logic_and      → equality ( "and" equality )* ;
+ * 
  * ternary        → equality ( "?" expression ":" ternary )? ;
  * equality       → comparison ( ( "!=" | "==" ) comparison )* ;
  * comparison     → term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
@@ -55,6 +64,7 @@ class Parser {
   private static class ParseError extends RuntimeException {}
   private final List<Token> tokens;
   private int current = 0;
+  private int loopDepth = 0; 
 
   Parser(List<Token> tokens) {
     this.tokens = tokens;
@@ -101,12 +111,89 @@ class Parser {
    * @return Statment
    */
   private Stmt statement() {
+    if (match(FOR)) return forStatement();
+    if (match(IF)) return ifStatement();
     if (match(PRINT)) return printStatement();
+    if (match(WHILE)) return whileStatement();
+    if (match(BREAK)) return breakStatement();
     if (match(LEFT_BRACE)) return new Stmt.Block(block());
 
     return expressionStatement();
   }
 
+  /**
+   * Consumes For statement 
+   * @return body of for-statement
+   */
+  private Stmt forStatement() {
+    consume(LEFT_PAREN, "Expect '(' after 'for'.");
+
+    Stmt initializer;
+    if (match(SEMICOLON)) {
+      initializer = null;
+    } else if (match(VAR)) {
+      initializer = varDeclaration();
+    } else {
+      initializer = expressionStatement();
+    }
+
+    Expr condition = null;
+    if (!check(SEMICOLON)) {
+      condition = expression();
+    }
+    consume(SEMICOLON, "Expect ';' after loop condition.");
+
+    Expr increment = null;
+    if (!check(RIGHT_PAREN)) {
+      increment = expression();
+    }
+    consume(RIGHT_PAREN, "Expect ')' after for clauses.");
+    
+    loopDepth++;
+    Stmt body = statement();
+    loopDepth--;
+
+    if (increment != null) {
+      body = new Stmt.Block(
+          Arrays.asList(
+              body,
+              new Stmt.Expression(increment)));
+    }
+
+    if (condition == null) condition = new Expr.Literal(true);
+    body = new Stmt.While(condition, body);
+
+    if (initializer != null) {
+      body = new Stmt.Block(Arrays.asList(initializer, body));
+    }
+
+    if (condition == null) condition = new Expr.Literal(true);
+    body = new Stmt.While(condition, body);
+
+    if (initializer != null) {
+      body = new Stmt.Block(Arrays.asList(initializer, body));
+    }
+
+    return body;
+  }
+
+  /**
+   * Consumes an If Statement
+   * @return
+   */
+  private Stmt ifStatement() {
+    consume(LEFT_PAREN, "Expect '(' after 'if'.");
+    Expr condition = expression();
+    consume(RIGHT_PAREN, "Expect ')' after if condition."); 
+
+    Stmt thenBranch = statement();
+    Stmt elseBranch = null;
+    if (match(ELSE)) {
+      elseBranch = statement();
+    }
+
+    return new Stmt.If(condition, thenBranch, elseBranch);
+  }
 
   /**
    * Consumes a print statement
@@ -133,6 +220,33 @@ class Parser {
 
     consume(SEMICOLON, "Expect ';' after variable declaration.");
     return new Stmt.Var(name, initializer);
+  }
+
+  /**
+   * Consumes a while statement
+   * @return While statement
+   */
+  private Stmt whileStatement() {
+    consume(LEFT_PAREN, "Expect '(' after 'while'.");
+    Expr condition = expression();
+    consume(RIGHT_PAREN, "Expect ')' after condition.");
+    loopDepth++;
+    Stmt body = statement();
+    loopDepth--;
+    return new Stmt.While(condition, body);
+  }
+
+  /**
+   * Consumes a break statement
+   * @return Break statement
+   */
+  private Stmt breakStatement() {
+    Token keyword = previous();
+    if (loopDepth == 0) {
+      throw error(keyword, "Cannot use 'break' outside of a loop.");
+    }
+    consume(SEMICOLON, "Expect ';' after 'break'.");
+    return new Stmt.Break(keyword);
   }
 
   /**
@@ -165,7 +279,7 @@ class Parser {
    * @return Expression
    */
   private Expr assignment() {
-    Expr expr = ternary();
+    Expr expr = or();
 
     if (match(EQUAL)) {
       Token equals = previous();
@@ -177,6 +291,38 @@ class Parser {
       }
 
       error(equals, "Invalid assignment target."); 
+    }
+
+    return expr;
+  }
+
+  /**
+   * Recursively unravels a or operator
+   * @return
+   */
+  private Expr or() {
+    Expr expr = and();
+
+    while (match(OR)) {
+      Token operator = previous();
+      Expr right = and();
+      expr = new Expr.Logical(expr, operator, right);
+    }
+
+    return expr;
+  }
+
+  /**
+   * Recursively unravels an and operator
+   * @return
+   */
+  private Expr and() {
+    Expr expr = equality();
+
+    while (match(AND)) {
+      Token operator = previous();
+      Expr right = equality();
+      expr = new Expr.Logical(expr, operator, right);
     }
 
     return expr;
@@ -238,7 +384,7 @@ class Parser {
    * @return Expression
    * 
    * Could simplify this with helper function for left-associative bin operators
-   * given a list of toekn types and an operand method handle to remove redundancy.
+   * given a list of token types and an operand method handle to remove redundancy.
    * TODO ? (is it really worth it, i like the readability.)
    */
   private Expr comparison() {
@@ -254,7 +400,7 @@ class Parser {
   }
 
   /**
-   * Recusively unravels a term using the term ruleset (+ -)
+   * Recursively unravels a term using the term ruleset (+ -)
    * @return Expression
    */
   private Expr term() {
